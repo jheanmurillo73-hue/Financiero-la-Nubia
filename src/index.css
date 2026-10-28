@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #121e28;
+  background-color: #f2f5f4;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --ink: #0b1724;
+  --ink-secondary: #273849;
+  --ink-soft: #51606d;
+  --line: #dfe5e4;
+  --paper: #fbfcfa;
+  --gold: #e5a83b;
+  --gold-pale: #fff2d8;
+  --green: #2e8564;
+  --green-pale: #e5f5ee;
+  --blue: #2c6ecb;
+  --blue-pale: #e8f1fc;
+  --violet: #6b57a6;
+  --violet-pale: #efeaf8;
+  --red: #c24343;
+}
+
+.font-mono {
+  font-family: 'DM Mono', monospace;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Custom scrollbars for data tables and panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f0f4f2;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd6d3;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9cb1ac;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "ActaFin - Panel de Control Financiero de Obra",
+  "description": "Panel de control financiero intuitivo y responsive para actas de obra, presupuesto y trazabilidad de avance físico-financiero.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
