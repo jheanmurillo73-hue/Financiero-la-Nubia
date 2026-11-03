@@ -114,5 +114,13 @@ test('parseActaWorkbook parses real Conexo La Nubia workbook with accurate disci
 
     const sumContracted = d.Electrico.contractedTotal + d.Civil.contractedTotal + d.Alumbrado.contractedTotal
     assert.equal(Math.round(sumContracted), 2891484098)
+
+    // Unbilled activities check
+    const electricPending = report.items.filter(it => it.discipline === 'Electrico' && it.balanceValue > 0)
+    const civilPending = report.items.filter(it => it.discipline === 'Civil' && it.balanceValue > 0)
+    assert.ok(electricPending.length > 0, 'Must have pending electrical activities')
+    assert.ok(civilPending.length > 0, 'Must have pending civil activities')
+    assert.ok(d.Electrico.balanceValue > 0, 'Electric balance value must be positive')
+    assert.ok(d.Civil.balanceValue > 0, 'Civil balance value must be positive')
   }
 })

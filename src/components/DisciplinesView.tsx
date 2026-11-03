@@ -18,6 +18,9 @@ import {
   TrendingUp,
   AlertCircle,
   Coins,
+  ArrowRight,
+  Pin,
+  PinOff,
 } from 'lucide-react'
 import { formatCurrency, formatPercent, formatCompact } from '../lib/formatters'
 import { DISCIPLINE_CONFIG } from '../lib/parseActa'
@@ -28,6 +31,7 @@ interface DisciplinesViewProps {
   selectedActNumber: number
   onUpdateDiscipline?: (rowNumber: number, newDiscipline: DisciplineType) => void
   onSelectAct?: (actNumber: number) => void
+  onNavigateToPending?: () => void
 }
 
 export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
@@ -35,19 +39,27 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
   selectedActNumber,
   onUpdateDiscipline,
   onSelectAct,
+  onNavigateToPending,
 }) => {
   const [filterType, setFilterType] = useState<DisciplineType | 'all'>('all')
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
+  const [isStickyPinned, setIsStickyPinned] = useState<boolean>(true)
   const [sortBy, setSortBy] = useState<'default' | 'value' | 'accum' | 'balance' | 'cutValue'>('default')
 
   // Filter by Acta in the item classification section
   // 'all' = All actas accumulated; number = specific Acta (1, 2, 3, 4...)
   const [selectedActFilter, setSelectedActFilter] = useState<'all' | number>('all')
 
-  // Execution status sub-filter for items
+  // Execution status sub-filter for items: includes specific civil/electric unbilled focus
   const [executionFilter, setExecutionFilter] = useState<
-    'all' | 'billed_in_cut' | 'zero_in_cut' | 'pending_balance' | 'completed'
+    | 'all'
+    | 'pending_balance'
+    | 'pending_electric'
+    | 'pending_civil'
+    | 'billed_in_cut'
+    | 'completed'
+    | 'zero_in_cut'
   >('all')
 
   const disciplines = report.disciplines
@@ -207,7 +219,11 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
     } else if (executionFilter === 'zero_in_cut') {
       result = result.filter((it) => it.valInCut === 0)
     } else if (executionFilter === 'pending_balance') {
-      result = result.filter((it) => it.balanceAtCut > 0)
+      result = result.filter((it) => it.balanceAtCut > 0.01)
+    } else if (executionFilter === 'pending_electric') {
+      result = result.filter((it) => it.discipline === 'Electrico' && it.balanceAtCut > 0.01)
+    } else if (executionFilter === 'pending_civil') {
+      result = result.filter((it) => it.discipline === 'Civil' && it.balanceAtCut > 0.01)
     } else if (executionFilter === 'completed') {
       result = result.filter((it) => it.progressPctAtCut >= 0.999)
     }
@@ -667,6 +683,85 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
         </div>
       </section>
 
+      {/* BANNER DE ACCESO DIRECTO AL FILTRO ENFOCADO EN ACTIVIDADES POR FACTURAR */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#fff9ed] via-[#fdf7ea] to-[#f4f7fb] border-2 border-[#e5a83b] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-[#e5a83b] text-[#0b1724] flex items-center justify-center font-bold shrink-0 shadow-xs">
+            <Clock size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <strong className="text-sm font-display font-bold text-[#0b1724]">
+                Filtro Enfocado: Actividades por Facturar (Civiles y Eléctricas en Detalle)
+              </strong>
+              <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase bg-[#e5a83b] text-[#0b1724] rounded-full">
+                Filtro Específico
+              </span>
+            </div>
+            <p className="text-xs font-mono text-[#6c5828] mt-1 max-w-2xl">
+              Filtra exclusivamente las partidas que tienen saldo pendiente de cobro. Compara en detalle el saldo eléctrico ({formatCompact(electric.balanceValue)}) frente al saldo civil ({formatCompact(civil.balanceValue)}) con cantidades faltantes y valores con AIU.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-2.5 text-xs font-mono">
+              <button
+                type="button"
+                onClick={() => {
+                  setExecutionFilter('pending_electric')
+                  setFilterType('all')
+                }}
+                className={`px-3 py-1 rounded-lg border font-bold transition-all flex items-center gap-1.5 ${
+                  executionFilter === 'pending_electric'
+                    ? 'bg-[#e5a83b] text-[#0b1724] border-[#e5a83b] shadow-xs ring-2 ring-[#e5a83b]/30'
+                    : 'bg-white text-[#a06800] border-[#f8d58a] hover:bg-[#fff6e3]'
+                }`}
+              >
+                <Zap size={13} />
+                <span>⚡ Solo Eléctricas con Saldo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setExecutionFilter('pending_civil')
+                  setFilterType('all')
+                }}
+                className={`px-3 py-1 rounded-lg border font-bold transition-all flex items-center gap-1.5 ${
+                  executionFilter === 'pending_civil'
+                    ? 'bg-[#4673a7] text-white border-[#4673a7] shadow-xs ring-2 ring-[#4673a7]/30'
+                    : 'bg-white text-[#235189] border-[#c3d5ee] hover:bg-[#eff4fb]'
+                }`}
+              >
+                <HardHat size={13} />
+                <span>🏗️ Solo Civiles con Saldo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setExecutionFilter('pending_balance')
+                  setFilterType('all')
+                }}
+                className={`px-3 py-1 rounded-lg border font-bold transition-all flex items-center gap-1.5 ${
+                  executionFilter === 'pending_balance'
+                    ? 'bg-[#0b1724] text-white border-[#0b1724] shadow-xs ring-2 ring-[#0b1724]/30'
+                    : 'bg-white text-[#4d5f6b] border-[#cbd8d4] hover:bg-[#fafcfb]'
+                }`}
+              >
+                <Clock size={13} />
+                <span>⏳ Todas con Saldo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        {onNavigateToPending && (
+          <button
+            type="button"
+            onClick={onNavigateToPending}
+            className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-mono font-bold bg-[#0b1724] text-[#f8c866] hover:bg-[#1a2d3e] rounded-xl transition-all shadow-sm shrink-0"
+          >
+            <span>Ver Informe Detallado de Saldos</span>
+            <ArrowRight size={14} />
+          </button>
+        )}
+      </div>
+
       {/* SECTION: CLASIFICACIÓN ÍTEM POR ÍTEM CON FILTRO POR ACTA */}
       <section className="bg-white rounded-xl border border-[#dfe5e4] p-4 sm:p-6 shadow-xs space-y-4">
         {/* Section Header */}
@@ -684,32 +779,54 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
             </p>
           </div>
 
-          {/* View mode toggle */}
-          <div className="inline-flex p-0.5 rounded-lg bg-[#f0f4f2] border border-[#e1e7e5] text-xs font-mono self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
-                viewMode === 'table'
-                  ? 'bg-white font-bold text-[#0b1724] shadow-xs'
-                  : 'text-[#687a84] hover:text-[#0b1724]'
-              }`}
-            >
-              <Table2 size={13} />
-              <span>Vista Tabla</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('cards')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
-                viewMode === 'cards'
-                  ? 'bg-white font-bold text-[#0b1724] shadow-xs'
-                  : 'text-[#687a84] hover:text-[#0b1724]'
-              }`}
-            >
-              <LayoutGrid size={13} />
-              <span>Vista Tarjetas</span>
-            </button>
+          {/* View mode and sticky toggle */}
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            {viewMode === 'table' && (
+              <button
+                type="button"
+                onClick={() => setIsStickyPinned(!isStickyPinned)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-semibold transition-all ${
+                  isStickyPinned
+                    ? 'bg-[#0b1724] text-[#f8c866] border-[#0b1724] shadow-xs'
+                    : 'bg-white text-[#526470] border-[#d4dedb] hover:bg-[#fafcfb]'
+                }`}
+                title={
+                  isStickyPinned
+                    ? 'Desactivar inmovilización de columnas de Ítem y Descripción'
+                    : 'Inmovilizar columnas de Ítem y Descripción'
+                }
+              >
+                <Pin size={13} className={isStickyPinned ? 'rotate-45 text-[#f8c866]' : 'text-[#7e909a]'} />
+                <span>{isStickyPinned ? 'Ítem y Desc. Inmovilizados' : 'Inmovilizar Ítem y Desc.'}</span>
+              </button>
+            )}
+
+            <div className="inline-flex p-0.5 rounded-lg bg-[#f0f4f2] border border-[#e1e7e5] text-xs font-mono">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
+                  viewMode === 'table'
+                    ? 'bg-white font-bold text-[#0b1724] shadow-xs'
+                    : 'text-[#687a84] hover:text-[#0b1724]'
+                }`}
+              >
+                <Table2 size={13} />
+                <span>Vista Tabla</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('cards')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${
+                  viewMode === 'cards'
+                    ? 'bg-white font-bold text-[#0b1724] shadow-xs'
+                    : 'text-[#687a84] hover:text-[#0b1724]'
+                }`}
+              >
+                <LayoutGrid size={13} />
+                <span>Vista Tarjetas</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -879,14 +996,36 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setExecutionFilter('pending_balance')}
-              className={`px-2 py-0.5 rounded-md border text-[11px] transition-all ${
-                executionFilter === 'pending_balance'
-                  ? 'bg-[#b0791a] text-white border-[#b0791a] font-semibold'
+              onClick={() => setExecutionFilter('pending_electric')}
+              className={`px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all ${
+                executionFilter === 'pending_electric'
+                  ? 'bg-[#e5a83b] text-[#0b1724] border-[#e5a83b] shadow-2xs'
                   : 'bg-[#fffaf0] text-[#a06800] border-[#f8d58a] hover:bg-[#fff2d6]'
               }`}
             >
-              ⏳ Con saldo por facturar
+              ⚡ Eléctricas por facturar
+            </button>
+            <button
+              type="button"
+              onClick={() => setExecutionFilter('pending_civil')}
+              className={`px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all ${
+                executionFilter === 'pending_civil'
+                  ? 'bg-[#4673a7] text-white border-[#4673a7] shadow-2xs'
+                  : 'bg-[#f3f7fd] text-[#235189] border-[#c3d5ee] hover:bg-[#e6effa]'
+              }`}
+            >
+              🏗️ Civiles por facturar
+            </button>
+            <button
+              type="button"
+              onClick={() => setExecutionFilter('pending_balance')}
+              className={`px-2 py-0.5 rounded-md border text-[11px] font-semibold transition-all ${
+                executionFilter === 'pending_balance'
+                  ? 'bg-[#b0791a] text-white border-[#b0791a] shadow-2xs'
+                  : 'bg-[#fffaf0] text-[#a06800] border-[#f8d58a] hover:bg-[#fff2d6]'
+              }`}
+            >
+              ⏳ Todas por facturar
             </button>
             <button
               type="button"
@@ -911,6 +1050,43 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
               ⚪ Sin cobro en {selectedActFilter === 'all' ? 'el proyecto' : `Acta ${selectedActFilter}`}
             </button>
           </div>
+
+          {/* Contextual Alert for Unbilled Filtering */}
+          {(executionFilter === 'pending_electric' ||
+            executionFilter === 'pending_civil' ||
+            executionFilter === 'pending_balance') && (
+            <div className="p-3 rounded-lg bg-[#fffaf0] border border-[#f8d58a] text-xs font-mono flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#e5a83b] shrink-0" />
+                <span className="text-[#a06800]">
+                  Filtro enfocado activo:{' '}
+                  <b>
+                    {executionFilter === 'pending_electric'
+                      ? '⚡ Actividades Eléctricas con Saldo por Facturar'
+                      : executionFilter === 'pending_civil'
+                      ? '🏗️ Obras Civiles con Saldo por Facturar'
+                      : '⏳ Todas las Actividades con Saldo por Facturar'}
+                  </b>{' '}
+                  ({filteredItems.length} partidas)
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-[11px]">
+                <span className="text-[#0b1724]">
+                  Saldo Directo Filtrado:{' '}
+                  <b>{formatCurrency(filteredItems.reduce((s, it) => s + it.balanceAtCut, 0))}</b>
+                </span>
+                {onNavigateToPending && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToPending}
+                    className="underline text-[#a06800] font-bold hover:text-[#0b1724]"
+                  >
+                    Ver análisis completo de saldos →
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 3. DYNAMIC EXECUTIVE SUMMARY BANNER FOR THE SELECTED ACTA */}
@@ -957,148 +1133,286 @@ export const DisciplinesView: React.FC<DisciplinesViewProps> = ({
 
         {/* 4. CONTENT TABLE OR CARDS */}
         {viewMode === 'table' ? (
-          <div className="overflow-x-auto rounded-xl border border-[#e1e7e5] max-h-[620px] overflow-y-auto">
-            <table className="w-full text-left text-xs font-mono border-collapse whitespace-nowrap">
-              <thead className="sticky top-0 z-10 bg-[#f5f8f7] text-[#5e707b] border-b border-[#dfe5e4]">
-                {/* Super-headers */}
-                <tr className="border-b border-[#cbd7d4] text-[10px] uppercase font-bold tracking-wider">
-                  <th colSpan={5} className="py-2 px-3 bg-[#f0f4f2] text-[#4d606d] border-r border-[#dfe5e4]">
-                    Especificación de la Partida
-                  </th>
-                  <th colSpan={2} className="py-2 px-3 bg-[#eef3f6] text-[#2b4c68] text-center border-r border-[#cbd7d4]">
-                    Contrato Base
-                  </th>
-                  <th colSpan={2} className="py-2 px-3 bg-[#e8f4ee] text-[#1f674e] text-center border-r border-[#cbd7d4]">
-                    🟢 {selectedActFilter === 'all' ? '1. Total Facturado' : `1. Cobrado en Acta ${selectedActFilter}`}
-                  </th>
-                  <th colSpan={3} className="py-2 px-3 bg-[#f2f6fa] text-[#235189] text-center border-r border-[#cbd7d4]">
-                    📈 2. Ejecutado Acumulado
-                  </th>
-                  <th colSpan={3} className="py-2 px-3 bg-[#fff9ed] text-[#a06800] text-center">
-                    ⏳ 3. Por Facturar (Saldo Pendiente)
-                  </th>
-                </tr>
-                {/* Columns */}
-                <tr>
-                  <th className="py-2.5 px-3 font-semibold">Ítem</th>
-                  <th className="py-2.5 px-3 font-semibold min-w-[280px]">Descripción</th>
-                  <th className="py-2.5 px-3 font-semibold text-center">Especialidad</th>
-                  <th className="py-2.5 px-3 font-semibold text-center">UND</th>
-                  <th className="py-2.5 px-3 font-semibold text-right border-r border-[#dfe5e4]">P. Unitario</th>
-                  <th className="py-2.5 px-3 font-semibold text-right bg-[#f8fafc]">Cant. Cont.</th>
-                  <th className="py-2.5 px-3 font-semibold text-right bg-[#eef3f6] text-[#0b1724] border-r border-[#cbd7d4]">
-                    Total Contratado
-                  </th>
-                  <th className="py-2.5 px-3 font-semibold text-right text-[#1f674e] bg-[#f2faf5]">
-                    Cant. en Corte
-                  </th>
-                  <th className="py-2.5 px-3 font-semibold text-right text-[#1f674e] font-bold bg-[#e8f4ee] border-r border-[#cbd7d4]">
-                    Valor en Corte ($)
-                  </th>
-                  <th className="py-2.5 px-3 font-semibold text-right bg-[#f8fbfe]">Cant. Acum.</th>
-                  <th className="py-2.5 px-3 font-semibold text-right bg-[#f2f6fa] text-[#235189] font-medium">
-                    Valor Acum. ($)
-                  </th>
-                  <th className="py-2.5 px-3 font-semibold text-right bg-[#f2f6fa] text-[#235189] font-bold border-r border-[#cbd7d4]">
-                    % Avance
-                  </th>
-                  <th className="py-2.5 px-3 font-semibold text-right bg-[#fffdfa]">Cant. Saldo</th>
-                  <th className="py-2.5 px-3 font-semibold text-right bg-[#fff9ed] text-[#a06800] font-medium">
-                    Saldo Restante ($)
-                  </th>
-                  <th className="py-2.5 px-3 font-semibold text-right bg-[#fff9ed] text-[#a06800] font-bold">
-                    % Saldo
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#edf1ef]">
-                {filteredItems.map((item) => {
-                  const conf = DISCIPLINE_CONFIG[item.discipline]
-                  const hasBillingInCut = item.valInCut > 0
+          <div className="bg-white rounded-xl border border-[#e1e7e5] shadow-xs overflow-hidden">
+            {/* Table Header Controls & Freeze Guidance Banner */}
+            <div className="p-3 bg-[#f7faf8] border-b border-[#dfe5e4] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs font-mono">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-[#0b1724]">Clasificación y Trazabilidad por Partida</span>
+                <span
+                  className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                    isStickyPinned
+                      ? 'bg-[#0b1724] text-[#f8c866] border-[#0b1724]'
+                      : 'bg-[#f0f4f2] text-[#556772] border-[#d8e2df]'
+                  }`}
+                >
+                  <Pin size={11} className={isStickyPinned ? 'rotate-45 text-[#f8c866]' : ''} />
+                  <span>
+                    {isStickyPinned
+                      ? 'Ítem y Descripción Inmovilizados'
+                      : 'Inmovilización desactivada'}
+                  </span>
+                </span>
+              </div>
 
-                  return (
-                    <tr
-                      key={item.row}
-                      className={`hover:bg-[#f8faf9] transition-colors ${
-                        hasBillingInCut ? 'bg-[#fcfefd]' : ''
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsStickyPinned(!isStickyPinned)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-bold transition-all ${
+                    isStickyPinned
+                      ? 'bg-[#e5a83b] text-[#0b1724] border-[#d4992f] shadow-2xs hover:bg-[#dba032]'
+                      : 'bg-white text-[#4b5e69] border-[#cbd7d4] hover:bg-[#f0f4f2]'
+                  }`}
+                >
+                  {isStickyPinned ? <PinOff size={12} /> : <Pin size={12} className="rotate-45 text-[#a06800]" />}
+                  <span>{isStickyPinned ? 'Liberar Columnas' : 'Inmovilizar Columnas'}</span>
+                </button>
+
+                {isStickyPinned && (
+                  <div className="hidden lg:flex items-center gap-1 text-[11px] text-[#5c6e7a] bg-white px-2 py-0.5 rounded-md border border-[#dfe5e4]">
+                    <span>Desplaza a la derecha</span>
+                    <span className="text-[#a06800] font-bold">👉</span>
+                    <span>para ver columnas en corte y saldos</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto max-h-[620px] overflow-y-auto relative">
+              <table
+                className={`w-full text-left text-xs font-mono whitespace-nowrap ${
+                  isStickyPinned ? 'border-separate border-spacing-0' : 'border-collapse'
+                }`}
+              >
+                <thead className="sticky top-0 z-20 bg-[#f5f8f7] text-[#5e707b] border-b border-[#dfe5e4]">
+                  {/* Super-headers */}
+                  <tr className="border-b border-[#cbd7d4] text-[10px] uppercase font-bold tracking-wider">
+                    {isStickyPinned ? (
+                      <>
+                        <th
+                          colSpan={2}
+                          className="py-2 px-3 sticky left-0 z-30 bg-[#e4ede9] text-[#0b1724] font-bold border-r-2 border-[#b9c9c5] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.12)] border-b border-[#cbd7d4]"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <Pin size={11} className="rotate-45 text-[#a06800]" />
+                            <span>Partida Inmovilizada (Ítem / Obra)</span>
+                          </div>
+                        </th>
+                        <th
+                          colSpan={3}
+                          className="py-2 px-3 bg-[#f0f4f2] text-[#4d606d] text-center border-r border-[#dfe5e4] border-b border-[#cbd7d4]"
+                        >
+                          Clasificación y P.U.
+                        </th>
+                      </>
+                    ) : (
+                      <th
+                        colSpan={5}
+                        className="py-2 px-3 bg-[#f0f4f2] text-[#4d606d] border-r border-[#dfe5e4] border-b border-[#cbd7d4]"
+                      >
+                        Especificación de la Partida
+                      </th>
+                    )}
+                    <th
+                      colSpan={2}
+                      className="py-2 px-3 bg-[#eef3f6] text-[#2b4c68] text-center border-r border-[#cbd7d4] border-b border-[#cbd7d4]"
+                    >
+                      Contrato Base
+                    </th>
+                    <th
+                      colSpan={2}
+                      className="py-2 px-3 bg-[#e8f4ee] text-[#1f674e] text-center border-r border-[#cbd7d4] border-b border-[#cbd7d4]"
+                    >
+                      🟢 {selectedActFilter === 'all' ? '1. Total Facturado' : `1. Cobrado en Acta ${selectedActFilter}`}
+                    </th>
+                    <th
+                      colSpan={3}
+                      className="py-2 px-3 bg-[#f2f6fa] text-[#235189] text-center border-r border-[#cbd7d4] border-b border-[#cbd7d4]"
+                    >
+                      📈 2. Ejecutado Acumulado
+                    </th>
+                    <th
+                      colSpan={3}
+                      className="py-2 px-3 bg-[#fff9ed] text-[#a06800] text-center border-b border-[#cbd7d4]"
+                    >
+                      ⏳ 3. Por Facturar (Saldo Pendiente)
+                    </th>
+                  </tr>
+                  {/* Columns */}
+                  <tr>
+                    <th
+                      className={`py-2.5 px-3 font-semibold border-b border-[#dfe5e4] w-20 min-w-[5rem] max-w-[5rem] ${
+                        isStickyPinned ? 'sticky left-0 z-30 bg-[#f5f8f7] border-r border-[#dfe5e4]' : ''
                       }`}
                     >
-                      <td className="py-2 px-3 font-bold text-[#0b1724]">{item.code || `R${item.row}`}</td>
-                      <td className="py-2 px-3 whitespace-normal font-sans text-xs text-[#253745] max-w-md">
-                        {item.description}
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        {onUpdateDiscipline ? (
-                          <select
-                            value={item.discipline}
-                            onChange={(e) => onUpdateDiscipline(item.row, e.target.value as DisciplineType)}
-                            className="text-[11px] font-mono font-semibold py-0.5 px-1.5 rounded-md border focus:outline-hidden cursor-pointer"
-                            style={{
-                              backgroundColor: conf.badgeBg,
-                              borderColor: conf.badgeBorder,
-                              color: conf.badgeText,
-                            }}
-                          >
-                            <option value="Electrico">⚡ Eléctrico</option>
-                            <option value="Civil">🏗️ Civil</option>
-                            <option value="Alumbrado">💡 Alumbrado</option>
-                          </select>
-                        ) : (
-                          <span
-                            className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border"
-                            style={{
-                              backgroundColor: conf.badgeBg,
-                              borderColor: conf.badgeBorder,
-                              color: conf.badgeText,
-                            }}
-                          >
-                            {conf.shortLabel}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-center text-[#677984]">{item.unit}</td>
-                      <td className="py-2 px-3 text-right text-[#576974] border-r border-[#dfe5e4]">
-                        {formatCurrency(item.unitPrice)}
-                      </td>
-                      <td className="py-2 px-3 text-right bg-[#fafcfd]">{item.contractedQty}</td>
-                      <td className="py-2 px-3 text-right font-medium text-[#0b1724] bg-[#f4f7f9] border-r border-[#cbd7d4]">
-                        {formatCurrency(item.contractedTotal)}
-                      </td>
+                      <div className="flex items-center gap-1">
+                        <span>Ítem</span>
+                        {isStickyPinned && <Pin size={10} className="text-[#a06800] rotate-45 shrink-0" />}
+                      </div>
+                    </th>
+                    <th
+                      className={`py-2.5 px-3 font-semibold border-b border-[#dfe5e4] min-w-[240px] sm:min-w-[300px] max-w-[320px] sm:max-w-md ${
+                        isStickyPinned
+                          ? 'sticky left-20 z-30 bg-[#f5f8f7] border-r-2 border-[#b9c9c5] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.12)]'
+                          : ''
+                      }`}
+                    >
+                      Descripción
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-center border-b border-[#dfe5e4]">Especialidad</th>
+                    <th className="py-2.5 px-3 font-semibold text-center border-b border-[#dfe5e4]">UND</th>
+                    <th className="py-2.5 px-3 font-semibold text-right border-r border-[#dfe5e4] border-b border-[#dfe5e4]">
+                      P. Unitario
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right bg-[#f8fafc] border-b border-[#dfe5e4]">
+                      Cant. Cont.
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right bg-[#eef3f6] text-[#0b1724] border-r border-[#cbd7d4] border-b border-[#dfe5e4]">
+                      Total Contratado
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right text-[#1f674e] bg-[#f2faf5] border-b border-[#dfe5e4]">
+                      Cant. en Corte
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right text-[#1f674e] font-bold bg-[#e8f4ee] border-r border-[#cbd7d4] border-b border-[#dfe5e4]">
+                      Valor en Corte ($)
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right bg-[#f8fbfe] border-b border-[#dfe5e4]">
+                      Cant. Acum.
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right bg-[#f2f6fa] text-[#235189] font-medium border-b border-[#dfe5e4]">
+                      Valor Acum. ($)
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right bg-[#f2f6fa] text-[#235189] font-bold border-r border-[#cbd7d4] border-b border-[#dfe5e4]">
+                      % Avance
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right bg-[#fffdfa] border-b border-[#dfe5e4]">
+                      Cant. Saldo
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right bg-[#fff9ed] text-[#a06800] font-medium border-b border-[#dfe5e4]">
+                      Saldo Restante ($)
+                    </th>
+                    <th className="py-2.5 px-3 font-semibold text-right bg-[#fff9ed] text-[#a06800] font-bold border-b border-[#dfe5e4]">
+                      % Saldo
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#edf1ef]">
+                  {filteredItems.map((item) => {
+                    const conf = DISCIPLINE_CONFIG[item.discipline]
+                    const hasBillingInCut = item.valInCut > 0
+                    const stickyBg = hasBillingInCut ? 'bg-[#fcfefd]' : 'bg-white'
 
-                      {/* Facturado en este corte */}
-                      <td className="py-2 px-3 text-right bg-[#fafdfb] text-[#1f674e]">
-                        {item.qtyInCut > 0 ? item.qtyInCut : '0'}
-                      </td>
-                      <td
-                        className={`py-2 px-3 text-right font-bold border-r border-[#cbd7d4] ${
-                          hasBillingInCut ? 'text-[#1f674e] bg-[#eef7f3]' : 'text-[#8799a5] bg-[#fafdfb]'
+                    return (
+                      <tr
+                        key={item.row}
+                        className={`group hover:bg-[#f8faf9] transition-colors ${
+                          hasBillingInCut ? 'bg-[#fcfefd]' : ''
                         }`}
                       >
-                        {formatCurrency(item.valInCut)}
-                      </td>
+                        {/* Col 1: Ítem (Frozen) */}
+                        <td
+                          className={`py-2 px-3 font-bold text-[#0b1724] w-20 min-w-[5rem] max-w-[5rem] border-b border-[#edf1ef] ${
+                            isStickyPinned
+                              ? `sticky left-0 z-10 ${stickyBg} group-hover:bg-[#f8faf9] border-r border-[#dfe5e4]`
+                              : ''
+                          }`}
+                        >
+                          <span className="truncate block">{item.code || `R${item.row}`}</span>
+                        </td>
 
-                      {/* Ejecutado Acumulado */}
-                      <td className="py-2 px-3 text-right bg-[#fafcfe]">{item.accumQtyAtCut}</td>
-                      <td className="py-2 px-3 text-right text-[#0b1724] bg-[#f5f8fc]">
-                        {formatCurrency(item.accumAtCut)}
-                      </td>
-                      <td className="py-2 px-3 text-right font-bold text-[#235189] bg-[#f0f4f9] border-r border-[#cbd7d4]">
-                        {formatPercent(item.progressPctAtCut)}
-                      </td>
+                        {/* Col 2: Descripción (Frozen with shadow divider) */}
+                        <td
+                          className={`py-2 px-3 whitespace-normal font-sans text-xs text-[#253745] min-w-[240px] sm:min-w-[300px] max-w-[280px] sm:max-w-md border-b border-[#edf1ef] ${
+                            isStickyPinned
+                              ? `sticky left-20 z-10 ${stickyBg} group-hover:bg-[#f8faf9] border-r-2 border-[#b9c9c5] shadow-[4px_0_10px_-2px_rgba(0,0,0,0.08)]`
+                              : ''
+                          }`}
+                        >
+                          <div className="line-clamp-2 sm:line-clamp-none">{item.description}</div>
+                        </td>
 
-                      {/* Por Facturar / Saldo */}
-                      <td className="py-2 px-3 text-right bg-[#fffefa]">{item.balanceQtyAtCut}</td>
-                      <td className="py-2 px-3 text-right font-medium text-[#a06800] bg-[#fffdf7]">
-                        {formatCurrency(item.balanceAtCut)}
-                      </td>
-                      <td className="py-2 px-3 text-right font-bold text-[#a06800] bg-[#fff9ed]">
-                        {formatPercent(item.balancePctAtCut)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        {/* Col 3: Especialidad */}
+                        <td className="py-2 px-3 text-center border-b border-[#edf1ef]">
+                          {onUpdateDiscipline ? (
+                            <select
+                              value={item.discipline}
+                              onChange={(e) => onUpdateDiscipline(item.row, e.target.value as DisciplineType)}
+                              className="text-[11px] font-mono font-semibold py-0.5 px-1.5 rounded-md border focus:outline-hidden cursor-pointer"
+                              style={{
+                                backgroundColor: conf.badgeBg,
+                                borderColor: conf.badgeBorder,
+                                color: conf.badgeText,
+                              }}
+                            >
+                              <option value="Electrico">⚡ Eléctrico</option>
+                              <option value="Civil">🏗️ Civil</option>
+                              <option value="Alumbrado">💡 Alumbrado</option>
+                            </select>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border"
+                              style={{
+                                backgroundColor: conf.badgeBg,
+                                borderColor: conf.badgeBorder,
+                                color: conf.badgeText,
+                              }}
+                            >
+                              {conf.shortLabel}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Col 4: Unidad */}
+                        <td className="py-2 px-3 text-center text-[#677984] border-b border-[#edf1ef]">{item.unit}</td>
+
+                        {/* Col 5: Precio Unitario */}
+                        <td className="py-2 px-3 text-right text-[#576974] border-r border-[#dfe5e4] border-b border-[#edf1ef]">
+                          {formatCurrency(item.unitPrice)}
+                        </td>
+
+                        {/* Col 6: Cantidad Contratada */}
+                        <td className="py-2 px-3 text-right bg-[#fafcfd] border-b border-[#edf1ef]">{item.contractedQty}</td>
+
+                        {/* Col 7: Total Contratado */}
+                        <td className="py-2 px-3 text-right font-medium text-[#0b1724] bg-[#f4f7f9] border-r border-[#cbd7d4] border-b border-[#edf1ef]">
+                          {formatCurrency(item.contractedTotal)}
+                        </td>
+
+                        {/* Facturado en este corte */}
+                        <td className="py-2 px-3 text-right bg-[#fafdfb] text-[#1f674e] border-b border-[#edf1ef]">
+                          {item.qtyInCut > 0 ? item.qtyInCut : '0'}
+                        </td>
+                        <td
+                          className={`py-2 px-3 text-right font-bold border-r border-[#cbd7d4] border-b border-[#edf1ef] ${
+                            hasBillingInCut ? 'text-[#1f674e] bg-[#eef7f3]' : 'text-[#8799a5] bg-[#fafdfb]'
+                          }`}
+                        >
+                          {formatCurrency(item.valInCut)}
+                        </td>
+
+                        {/* Ejecutado Acumulado */}
+                        <td className="py-2 px-3 text-right bg-[#fafcfe] border-b border-[#edf1ef]">{item.accumQtyAtCut}</td>
+                        <td className="py-2 px-3 text-right text-[#0b1724] bg-[#f5f8fc] border-b border-[#edf1ef]">
+                          {formatCurrency(item.accumAtCut)}
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-[#235189] bg-[#f0f4f9] border-r border-[#cbd7d4] border-b border-[#edf1ef]">
+                          {formatPercent(item.progressPctAtCut)}
+                        </td>
+
+                        {/* Por Facturar / Saldo */}
+                        <td className="py-2 px-3 text-right bg-[#fffefa] border-b border-[#edf1ef]">{item.balanceQtyAtCut}</td>
+                        <td className="py-2 px-3 text-right font-medium text-[#a06800] bg-[#fffdf7] border-b border-[#edf1ef]">
+                          {formatCurrency(item.balanceAtCut)}
+                        </td>
+                        <td className="py-2 px-3 text-right font-bold text-[#a06800] bg-[#fff9ed] border-b border-[#edf1ef]">
+                          {formatPercent(item.balancePctAtCut)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           /* Cards mode */

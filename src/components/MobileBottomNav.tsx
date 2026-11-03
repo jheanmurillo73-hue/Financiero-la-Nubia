@@ -1,10 +1,11 @@
-import React from 'react'
 import {
   LayoutDashboard,
   Zap,
   FileSpreadsheet,
   Layers,
   SlidersHorizontal,
+  Sparkles,
+  Clock,
 } from 'lucide-react'
 
 interface MobileBottomNavProps {
@@ -20,16 +21,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   isSimulation = false,
 }) => {
   const tabs = [
+    { id: 'disciplinas', label: 'Eléctrico/Civil', icon: Zap },
+    { id: 'porFacturar', label: 'Por Facturar', icon: Clock, badge: 'Saldo' },
     { id: 'resumen', label: 'Resumen', icon: LayoutDashboard },
-    { id: 'disciplinas', label: 'Eléctrico/Civil', icon: Zap, badge: '!' },
+    { id: 'asistente', label: 'Informes IA', icon: Sparkles, badge: 'AI' },
     { id: 'actas', label: 'Actas', icon: FileSpreadsheet },
-    { id: 'capitulos', label: 'Capítulos', icon: Layers },
-    {
-      id: 'simulador',
-      label: 'Simulador',
-      icon: SlidersHorizontal,
-      badge: isSimulation ? '●' : undefined,
-    },
   ]
 
   return (
@@ -57,7 +53,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 {tab.badge && (
                   <span
                     className={`absolute -top-1.5 -right-2 px-1 min-w-[13px] h-[13px] text-[8px] font-mono font-bold rounded-full flex items-center justify-center ${
-                      tab.id === 'disciplinas'
+                      tab.id === 'porFacturar'
                         ? 'bg-[#e5a83b] text-[#0b1724]'
                         : 'bg-[#3b8f71] text-white'
                     }`}

@@ -17,6 +17,7 @@ import {
   Building,
   ArrowRight,
   ExternalLink,
+  Clock,
 } from 'lucide-react'
 import { Header } from './components/Header'
 import { MobileBottomNav } from './components/MobileBottomNav'
@@ -27,10 +28,12 @@ import { ActaFocusCard } from './components/ActaFocusCard'
 import { ActasTable } from './components/ActasTable'
 import { ChaptersView } from './components/ChaptersView'
 import { DisciplinesView } from './components/DisciplinesView'
+import { PendingActivitiesFocusView } from './components/PendingActivitiesFocusView'
 import { SimulatorPanel } from './components/SimulatorPanel'
 import { AuditView } from './components/AuditView'
 import { EmptyState } from './components/EmptyState'
 import { ExportModal } from './components/ExportModal'
+import { ReportChatbot } from './components/ReportChatbot'
 import { parseActaWorkbook, recalculateWithParams, updateItemDiscipline } from './lib/parseActa'
 import { getSampleReport } from './lib/sampleData'
 import { formatCurrency, formatPercent, formatCompact } from './lib/formatters'
@@ -166,7 +169,19 @@ export default function App() {
         ? `${(report.disciplines.Electrico.contractedPct * 100).toFixed(0)}% / ${(report.disciplines.Civil.contractedPct * 100).toFixed(0)}%`
         : undefined,
     },
+    {
+      id: 'porFacturar',
+      label: '⏳ Por Facturar',
+      icon: Clock,
+      badge: report ? `${formatCompact(report.billedBalance)}` : undefined,
+    },
     { id: 'resumen', label: 'Resumen Ejecutivo', icon: LayoutDashboard },
+    {
+      id: 'asistente',
+      label: '🤖 Asistente & Informes IA',
+      icon: Sparkles,
+      badge: 'IA',
+    },
     {
       id: 'actas',
       label: 'Trazabilidad de Actas',
@@ -284,6 +299,19 @@ export default function App() {
               <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
                 <button
                   type="button"
+                  onClick={() => setActiveTab('porFacturar')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg transition-all border ${
+                    activeTab === 'porFacturar'
+                      ? 'bg-[#e5a83b] text-[#0b1724] border-[#e5a83b] font-bold shadow-xs'
+                      : 'bg-[#fffaf0] text-[#a06800] border-[#f8d58a] hover:bg-[#fff2d6]'
+                  }`}
+                  title="Auditar actividades civiles y eléctricas con saldo pendiente"
+                >
+                  <Clock size={14} />
+                  <span>Por Facturar: {formatCompact(report.billedBalance)}</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setIsExportOpen(true)}
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-[#0b1724] text-white hover:bg-[#1a2c3d] shadow-sm transition-all"
                 >
@@ -363,6 +391,18 @@ export default function App() {
                 selectedActNumber={selectedAct}
                 onUpdateDiscipline={handleUpdateDiscipline}
                 onSelectAct={setSelectedAct}
+                onNavigateToPending={() => setActiveTab('porFacturar')}
+              />
+            )}
+
+            {/* TAB: ACTIVIDADES POR FACTURAR (FILTRO ENFOCADO EN DETALLE) */}
+            {activeTab === 'porFacturar' && (
+              <PendingActivitiesFocusView
+                report={report}
+                selectedActNumber={selectedAct}
+                onUpdateDiscipline={handleUpdateDiscipline}
+                onSelectAct={setSelectedAct}
+                onNavigateToDisciplines={() => setActiveTab('disciplinas')}
               />
             )}
 
@@ -400,6 +440,36 @@ export default function App() {
                 {/* Billing Gauge / Meter */}
                 <BillingGauge report={report} />
 
+                {/* AI Assistant Callout Card */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-[#0b1724] to-[#172c3f] text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm border border-[#23384a]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#e5a83b] to-[#ca8f24] text-[#0b1724] flex items-center justify-center font-bold shrink-0 shadow-md shadow-[#e5a83b]/30">
+                      <Sparkles size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm font-display font-bold text-white block">
+                          Generador de Informes & Auditoría IA
+                        </strong>
+                        <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold uppercase bg-[#e5a83b] text-[#0b1724] rounded-full">
+                          Nuevo
+                        </span>
+                      </div>
+                      <p className="text-xs font-mono text-[#a2b5c5] mt-0.5">
+                        Elabora minutas gerenciales, balances eléctricos vs civiles y auditorías de anticipo con un clic.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('asistente')}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-xs font-mono font-bold bg-[#e5a83b] text-[#0b1724] hover:bg-[#d49626] rounded-lg transition-all shrink-0 shadow-xs"
+                  >
+                    <span>Abrir Asistente IA</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+
                 {/* Charts and Focused Corte Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
                   <div className="lg:col-span-7">
@@ -424,6 +494,13 @@ export default function App() {
                   chapters={report.chapters}
                   selectedActNumber={selectedAct}
                 />
+              </div>
+            )}
+
+            {/* TAB: ASISTENTE & INFORMES IA */}
+            {activeTab === 'asistente' && (
+              <div className="space-y-6">
+                <ReportChatbot report={report} selectedActNumber={selectedAct} />
               </div>
             )}
 
@@ -509,6 +586,24 @@ export default function App() {
           warningsCount={warningsCount}
           isSimulation={report.isSimulation}
         />
+      )}
+
+      {/* Floating AI Assistant Trigger Button */}
+      {report && (
+        <button
+          type="button"
+          onClick={() => setActiveTab(activeTab === 'asistente' ? 'resumen' : 'asistente')}
+          className="fixed bottom-20 md:bottom-7 right-5 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#0b1724] hover:bg-[#182a3a] text-white shadow-xl shadow-[#0b1724]/25 border border-[#3b4c5b] transition-all transform hover:scale-105 active:scale-95 group"
+          title="Abrir Asistente IA para generar informes personalizados"
+        >
+          <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#e5a83b] to-[#f8c866] text-[#0b1724] flex items-center justify-center font-bold">
+            <Sparkles size={14} className="group-hover:rotate-12 transition-transform" />
+          </div>
+          <span className="text-xs font-semibold font-mono tracking-tight hidden sm:inline">
+            {activeTab === 'asistente' ? 'Volver al Panel' : 'Asistente & Informes IA'}
+          </span>
+          <span className="sm:hidden text-xs font-bold font-mono">IA</span>
+        </button>
       )}
 
       {/* Export Modal */}

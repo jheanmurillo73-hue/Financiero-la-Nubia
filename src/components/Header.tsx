@@ -10,6 +10,7 @@ import {
   Download,
   Zap,
   CheckCircle2,
+  Clock,
 } from 'lucide-react'
 import type { FinancialReport } from '../lib/model'
 
@@ -79,6 +80,34 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setActiveTab('porFacturar')}
+                  className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all shadow-sm border ${
+                    activeTab === 'porFacturar'
+                      ? 'bg-[#e5a83b] text-[#0b1724] border-[#e5a83b] font-bold'
+                      : 'bg-[#fffaf0] text-[#a06800] border-[#f8d58a] hover:bg-[#fff2d6]'
+                  }`}
+                  title="Filtro enfocado en actividades por facturar civiles y eléctricas"
+                >
+                  <Clock size={14} />
+                  <span>Por Facturar</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('asistente')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all shadow-sm ${
+                    activeTab === 'asistente'
+                      ? 'bg-[#e5a83b] text-[#0b1724]'
+                      : 'bg-[#0b1724] text-[#f8c866] hover:bg-[#1a2c3d]'
+                  }`}
+                  title="Abrir Asistente IA para generar informes personalizados"
+                >
+                  <Sparkles size={14} />
+                  <span>Informes IA</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={onOpenExport}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-white border border-[#cbd7d5] text-[#2c3d4a] hover:bg-[#f4f8f6] hover:border-[#3b8f71] transition-all shadow-sm"
                 >
@@ -89,9 +118,9 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   type="button"
                   onClick={onReset}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#0b1724] text-white hover:bg-[#1a2c3d] transition-all shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#f0f4f2] text-[#283845] hover:bg-[#e2ebe8] transition-all shadow-sm border border-[#d2deda]"
                 >
-                  <Upload size={14} className="text-[#f8c866]" />
+                  <Upload size={14} className="text-[#2e8564]" />
                   <span>Cargar Otro</span>
                 </button>
               </div>
